@@ -1,6 +1,12 @@
 # PyCharm
 .idea/
 
+# Sphinx test project
+test-project/_build
+
+# Kate 
+*~
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
