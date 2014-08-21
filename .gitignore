@@ -7,6 +7,9 @@ test-project/_build
 # Kate 
 *~
 
+# Vim
+*.swp
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
