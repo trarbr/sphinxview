@@ -9,39 +9,26 @@ Usage:
 
 Options:
     -c, --clean               If set, a clean build is created
-    -r, --rootdir=<path>      Root documentation directory [default: .]
-    -s, --sourcedir=<path>    Directory containing the source files [default: .]
-    -b, --builddir=<path>     Directory to store build [default: _build]
-    -m, --masterdoc=<file>    Master document (contains root toctree directive),
-                              without suffix [default: index]
+    -s, --sourcedir=<path>    Directory containing the Sphinx source files
+                              [default: .]
+    -b, --builddir=<path>     Sphinx build directory. If passed a relative
+                              path, it will be interpreted as relative to
+                              sourcedir [default: _build]
     --suffix=<suffix>         Source file suffix [default: .rst]
+    -t, --target=<file>       Name of file to launch in web browser (without
+                              extension) [default: index]
     -i, --interface=<ip>      Interface to serve build on [default: 127.0.0.1]
     -p, --port=<port>         Port to serve build on [default: 16001]
+    -n, --no-browser          Don't open a web browser pointed at target
 """
-
-# Moving parts:
-# - the server
-# - serves get request with a page, head request receives inner html, uses
-# regex to get the timestamp of last_updated and compares that to mtime of
-# corresponding source file, if source file is newer, build sphinx project
-# and force reload of page
-# - the extension
-# - add javascript that gets inner html from footer div and sends it to server
-# - the cli
-# - call make (or sphinx build) with the parameter -D html_last_updated_fmt="%s"
-# make html SPHINXOPTS='-D html_last_updated_fmt="%a"'
-# - spawn server with any arguments that it needs
-# - launch webbrowser with master_doc in build as first target
 
 # TODO: Subclass HTTP server, new class gets source_dir and build_dir, build_dir used for serving and source_dir used by Handler
 # TODO: Handler also needs access to building the project - perhaps this is a job for the server as well?
-# TODO: Fix issue that makes server hang when trying to havigate to new page (looks like eternal loop)
-# TODO: What is rootdir argument used for?
-# TODO: builddir and sourcedir should be relative to rootdir
-# TODO: user should be able to specify where to point browser at, instead of using masterdoc (default to index) (-t --target)
+# TODO: Cleanup handler
+# TODO: Introduce seperate Builder class?
 
 from docopt import docopt
-from os import chdir, path
+from os import chdir, path, getcwd
 from time import sleep
 from urllib.parse import parse_qs
 from http.server import HTTPServer, SimpleHTTPRequestHandler
@@ -50,12 +37,12 @@ from subprocess import call
 from re import search
 from shutil import rmtree
 from socketserver import ThreadingMixIn
+from threading import Thread
+import webbrowser
 
 SPHINXVIEW_OUTPUT_DIR = 'sphinxview'
 LAST_UPDATED_FMT = 'html_last_updated_fmt=%% %s %%'
 SPHINXVIEW_ENABLED_TRUE = 'sphinxview_enabled=1'
-# TODO: is SOURCE_DIR ever used? For what?
-SOURCE_DIR = ""
 
 
 class SphinxViewRequestHandler(SimpleHTTPRequestHandler):
@@ -157,29 +144,51 @@ class SphinxViewHTTPServer(ThreadingMixIn, HTTPServer):
         super().serve_forever(poll_interval)
 
 
+def launch_browser(url):
+    browser_thread = Thread(target=webbrowser.open, args=(url,))
+    browser_thread.setDaemon(True)
+    browser_thread.start()
+
+
+# for debugging
+def print_args(arguments):
+    for key, value in arguments.items():
+        print(key, value)
+    exit()
+
+
 def main():
+    # parse arguments
     arguments = docopt(__doc__)
+    #print_args(arguments)
     clean = arguments['--clean']
-    root_dir = path.abspath(arguments['--rootdir'])
-    source_dir = path.abspath(arguments['--sourcedir'])
-    build_dir = path.abspath(arguments['--builddir'])
+    source_dir = arguments['--sourcedir']
+    if source_dir is not None:
+        source_dir = path.abspath(source_dir)
+    else:
+        source_dir = getcwd()
+    build_dir = arguments['--builddir']
+    if not path.isabs(build_dir):
+        build_dir = path.join(source_dir, build_dir)
     output_dir = path.join(build_dir, SPHINXVIEW_OUTPUT_DIR)
-    print('output dir:', output_dir)
-    master_doc = arguments['--masterdoc']
-    # suffix: used by RequestHandler to match request to source file
+    target = arguments['--target'] + '.html'
     suffix = arguments['--suffix']
     interface = arguments['--interface']
-    port = arguments['--port']
+    port = int(arguments['--port'])
+    browser = not arguments['--no-browser']
+
+    url_target = 'http://{0}:{1}/{2}'.format(interface, port, target)
 
     if clean:
         rmtree(output_dir)
 
-    # set up server
-    server_address = ('', 8001)
+    # set up server and launch browser
+    server_address = (interface, port)
     handler_class = SphinxViewRequestHandler
     httpd = SphinxViewHTTPServer(
         server_address, handler_class, source_dir, output_dir, suffix)
-    # TODO: launch browser here
+    if browser:
+        launch_browser(url_target)
     httpd.serve_forever()
 
 
