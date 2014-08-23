@@ -38,7 +38,7 @@ Options:
 # TODO: Fix issue that makes server hang when trying to havigate to new page (looks like eternal loop)
 # TODO: What is rootdir argument used for?
 # TODO: builddir and sourcedir should be relative to rootdir
-# TODO: user should be able to specify where to point browser at, instead of using masterdoc (default to index)
+# TODO: user should be able to specify where to point browser at, instead of using masterdoc (default to index) (-t --target)
 
 from docopt import docopt
 from os import chdir, path
