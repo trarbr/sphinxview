@@ -26,6 +26,8 @@ Options:
 # TODO: Handler also needs access to building the project - perhaps this is a job for the server as well?
 # TODO: Cleanup handler
 # TODO: Introduce seperate Builder class?
+# TODO: List requirements
+# TODO: Tests! But how?
 
 from docopt import docopt
 from os import chdir, path, getcwd
