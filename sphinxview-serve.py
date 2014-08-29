@@ -103,25 +103,22 @@ class SphinxViewRequestHandler(SimpleHTTPRequestHandler):
         if self.path.startswith('/polling?'):
             self.handle_polling()
 
-    def get_queried_source_file_name(self, query):
-        # get file_path and last_updated from query
-        # TODO: path matching should be encapsulated by method
-        # query['file_path'] returns a list, so take the first element
-        relative_file_path = query['file_path'][0]
-        print('relative file path: ', relative_file_path)
-        # when doing path.join, remove leading / from relative_file_path
-        file_path_wrong_extension = path.join(
-            self.server.source_dir, relative_file_path[1:])
-        print('file path wrong extension ', file_path_wrong_extension)
+    def get_polled_source_file(self, query):
+        # query['polled_source_file'] returns a list, so take the first element
+        polled_build_file = query['build_file'][0]
+        print('relative file path: ', polled_build_file)
+        # when doing path.join, remove leading / from polled_build_file
+        polled_build_file = path.join(
+            self.server.source_dir, polled_build_file[1:])
+        print('absolute file path wrong extension ', polled_build_file)
         # remove html extension and add rst extension
-        file_path = path.splitext(file_path_wrong_extension)[0] + \
-                    self.server.suffix
-        print('file_path: ', file_path)
-        return file_path
+        polled_source_file = path.splitext(polled_build_file)[0] + \
+            self.server.suffix
+        print('polled_source_file: ', polled_source_file)
+        return polled_source_file
 
     def get_build_time(self, query):
         last_updated = query['last_updated'][0]
-        # st_mtime returns float, so convert build_time to float
         build_time = int(search(r'% (\d+) %', last_updated).group(1))
         print('Build time: ', build_time)
         return build_time
@@ -130,7 +127,7 @@ class SphinxViewRequestHandler(SimpleHTTPRequestHandler):
         print('I am being polled')
         print('Path: ', self.path)
         query = parse_qs(self.path.partition('?')[-1])
-        source_file = self.get_queried_source_file_name(query)
+        source_file = self.get_polled_source_file(query)
         build_time = self.get_build_time(query)
 
         # while server.current_requested_url == my path
