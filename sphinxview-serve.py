@@ -22,8 +22,6 @@ Options:
     -n, --no-browser          Don't open a web browser pointed at target
 """
 
-# TODO: Subclass HTTP server, new class gets source_dir and build_dir, build_dir used for serving and source_dir used by Handler
-# TODO: Handler also needs access to building the project - perhaps this is a job for the server as well?
 # TODO: Cleanup handler
 # TODO: Introduce seperate Builder class?
 # TODO: List requirements
@@ -45,57 +43,6 @@ import webbrowser
 SPHINXVIEW_OUTPUT_DIR = 'sphinxview'
 LAST_UPDATED_FMT = 'html_last_updated_fmt=%% %s %%'
 SPHINXVIEW_ENABLED_TRUE = 'sphinxview_enabled=1'
-
-
-class SphinxViewRequestHandler(SimpleHTTPRequestHandler):
-
-    def __init__(self, request, client_address, server):
-        super().__init__(request, client_address, server)
-
-    def do_HEAD(self):
-        print('Got HEAD request')
-        if self.path.startswith('/polling?'):
-            self.handle_polling()
-
-    def handle_polling(self):
-        print('I am being polled')
-        query = parse_qs(self.path.partition('?')[-1])
-        # get file_path and last_updated from query
-        # TODO: path matching should be encapsulated by method
-        relative_file_path = query['file_path'][0]
-        print('relative file path: ', relative_file_path)
-        file_path_wrong_extension = path.join(
-            self.server.source_dir, relative_file_path[1:])
-        file_path = path.splitext(file_path_wrong_extension)[0] + self.server.suffix
-        print('file_path: ', file_path)
-        # regex
-        # TODO: regex should be encapsulated by method
-        last_updated = query['last_updated'][0]
-        build_time = float(search(r'% (\d+) %', last_updated).group(1))
-        print(build_time)
-
-        print('last updated: ', last_updated)
-
-        # while server.current_requested_url == my path
-        while True:
-            try:
-                mtime = stat(file_path).st_mtime
-            except OSError:
-                # Sometimes when you save a file in a text editor it stops
-                # existing for a brief moment.
-                # See https://github.com/mgedmin/restview/issues/11
-                sleep(0.1)
-                continue
-
-            if mtime > build_time:  # the file was modified after the build
-                self.server.build_sphinx_project()
-                self.send_response(200)
-                self.send_header(
-                    "Cache-Control", "no-cache, no-store, max-age=0")
-                self.end_headers()
-                return
-            else:
-                sleep(0.2)
 
 
 class SphinxViewHTTPServer(ThreadingMixIn, HTTPServer):
@@ -144,6 +91,68 @@ class SphinxViewHTTPServer(ThreadingMixIn, HTTPServer):
         print("Now serving on {0}".format(self.server_address))
         print("===")
         super().serve_forever(poll_interval)
+
+
+class SphinxViewRequestHandler(SimpleHTTPRequestHandler):
+
+    def __init__(self, request, client_address, server):
+        super().__init__(request, client_address, server)
+
+    def do_HEAD(self):
+        print('Got HEAD request')
+        if self.path.startswith('/polling?'):
+            self.handle_polling()
+
+    def get_queried_source_file_name(self, query):
+        # get file_path and last_updated from query
+        # TODO: path matching should be encapsulated by method
+        # query['file_path'] returns a list, so take the first element
+        relative_file_path = query['file_path'][0]
+        print('relative file path: ', relative_file_path)
+        # when doing path.join, remove leading / from relative_file_path
+        file_path_wrong_extension = path.join(
+            self.server.source_dir, relative_file_path[1:])
+        print('file path wrong extension ', file_path_wrong_extension)
+        # remove html extension and add rst extension
+        file_path = path.splitext(file_path_wrong_extension)[0] + \
+                    self.server.suffix
+        print('file_path: ', file_path)
+        return file_path
+
+    def get_build_time(self, query):
+        last_updated = query['last_updated'][0]
+        # st_mtime returns float, so convert build_time to float
+        build_time = int(search(r'% (\d+) %', last_updated).group(1))
+        print('Build time: ', build_time)
+        return build_time
+
+    def handle_polling(self):
+        print('I am being polled')
+        print('Path: ', self.path)
+        query = parse_qs(self.path.partition('?')[-1])
+        source_file = self.get_queried_source_file_name(query)
+        build_time = self.get_build_time(query)
+
+        # while server.current_requested_url == my path
+        while True:
+            try:
+                mtime = int(stat(source_file).st_mtime)
+            except OSError:
+                # Sometimes when you save a file in a text editor it stops
+                # existing for a brief moment.
+                # See https://github.com/mgedmin/restview/issues/11
+                sleep(0.1)
+                continue
+
+            if mtime > build_time:  # the file was modified after the build
+                self.server.build_sphinx_project()
+                self.send_response(200)
+                self.send_header(
+                    "Cache-Control", "no-cache, no-store, max-age=0")
+                self.end_headers()
+                return
+            else:
+                sleep(0.2)
 
 
 def launch_browser(url):
