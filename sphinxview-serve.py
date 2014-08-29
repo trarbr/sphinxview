@@ -22,7 +22,6 @@ Options:
     -n, --no-browser          Don't open a web browser pointed at target
 """
 
-# TODO: Cleanup handler
 # TODO: Introduce seperate Builder class?
 # TODO: List requirements
 # TODO: Tests! But how?
