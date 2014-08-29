@@ -98,7 +98,6 @@ class SphinxViewRequestHandler(SimpleHTTPRequestHandler):
         super().__init__(request, client_address, server)
 
     def do_HEAD(self):
-        print('Got HEAD request')
         if self.path.startswith('/polling?'):
             self.handle_polling()
 
@@ -119,8 +118,6 @@ class SphinxViewRequestHandler(SimpleHTTPRequestHandler):
         return build_time
 
     def handle_polling(self):
-        print('I am being polled')
-        print('Path: ', self.path)
         query = parse_qs(self.path.partition('?')[-1])
         source_file = self.get_polled_source_file(query)
         build_time = self.get_build_time(query)
