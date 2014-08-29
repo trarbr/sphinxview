@@ -106,21 +106,17 @@ class SphinxViewRequestHandler(SimpleHTTPRequestHandler):
     def get_polled_source_file(self, query):
         # query['build_file'] returns a list, so take the first element
         relative_build_file = query['build_file'][0]
-
         # remove html extension and add rst extension
         relative_source_file = path.splitext(relative_build_file)[0] + \
             self.server.suffix
-
         # remove leading / from relative_source_file to treat it as relative
         polled_source_file = path.join(
             self.server.source_dir, relative_source_file[1:])
-
         return polled_source_file
 
     def get_build_time(self, query):
         last_updated = query['last_updated'][0]
         build_time = int(search(r'% (\d+) %', last_updated).group(1))
-        print('Build time: ', build_time)
         return build_time
 
     def handle_polling(self):
