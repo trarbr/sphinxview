@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 
 """
-sphinxview-serve - like restview, but for Sphinx projects
+sphinxview-serve - automatically rebuilds your Sphinx project on changes
 
 Usage:
     sphinxview.py [options]
@@ -22,7 +22,6 @@ Options:
     -n, --no-browser          Don't open a web browser pointed at target
 """
 
-# TODO: Introduce seperate Builder class?
 # TODO: List requirements
 # TODO: Tests! But how?
 
@@ -44,30 +43,20 @@ LAST_UPDATED_FMT = 'html_last_updated_fmt=%% %s %%'
 SPHINXVIEW_ENABLED_TRUE = 'sphinxview_enabled=1'
 
 
-class SphinxViewHTTPServer(ThreadingMixIn, HTTPServer):
-    daemon_threads = True
-
-    def __init__(
-        self,
-        server_address,
-        handler_class,
-        source_dir,
-        output_dir,
-        suffix,
-    ):
+class Builder(object):
+    def __init__(self, source_dir, output_dir, suffix):
         self.source_dir = source_dir
         self.output_dir = output_dir
         self.suffix = suffix
-        self.build_sphinx_project()
-        super().__init__(server_address, handler_class)
 
-    def handle_request(self):
-        print('handling a request')
-        super().handle_request()
+    def prepare_output_directory(self, clean):
+        # handle output dir not exists
+        if clean:
+            rmtree(self.output_dir)
 
     def build_sphinx_project(self):
         sphinx_call = ['sphinx-build']
-        # set builder
+        # set html builder
         sphinx_call.append('-b')
         sphinx_call.append('html')
         # force building all files
@@ -84,38 +73,33 @@ class SphinxViewHTTPServer(ThreadingMixIn, HTTPServer):
 
         call(sphinx_call)
 
+
+class BuildHTTPServer(ThreadingMixIn, HTTPServer):
+    """Threaded HTTP server with a SphinxBuilder used by the handler_class"""
+    daemon_threads = True
+
+    def __init__(self, server_address, builder):
+        self.builder = builder
+        builder.build_sphinx_project()
+        handler_class = BuildRequestHandler
+        super().__init__(server_address, handler_class)
+
     def serve_forever(self, poll_interval=0.5):
-        chdir(self.output_dir)
         print("===")
         print("Now serving on {0}".format(self.server_address))
         print("===")
         super().serve_forever(poll_interval)
 
 
-class SphinxViewRequestHandler(SimpleHTTPRequestHandler):
+class BuildRequestHandler(SimpleHTTPRequestHandler):
 
     def __init__(self, request, client_address, server):
+        self.builder = server.builder
         super().__init__(request, client_address, server)
 
     def do_HEAD(self):
         if self.path.startswith('/polling?'):
             self.handle_polling()
-
-    def get_polled_source_file(self, query):
-        # query['build_file'] returns a list, so take the first element
-        relative_build_file = query['build_file'][0]
-        # remove html extension and add rst extension
-        relative_source_file = path.splitext(relative_build_file)[0] + \
-            self.server.suffix
-        # remove leading / from relative_source_file to treat it as relative
-        polled_source_file = path.join(
-            self.server.source_dir, relative_source_file[1:])
-        return polled_source_file
-
-    def get_build_time(self, query):
-        last_updated = query['last_updated'][0]
-        build_time = int(search(r'% (\d+) %', last_updated).group(1))
-        return build_time
 
     def handle_polling(self):
         query = parse_qs(self.path.partition('?')[-1])
@@ -134,7 +118,7 @@ class SphinxViewRequestHandler(SimpleHTTPRequestHandler):
                 continue
 
             if mtime > build_time:  # the file was modified after the build
-                self.server.build_sphinx_project()
+                self.builder.build_sphinx_project()
                 self.send_response(200)
                 self.send_header(
                     "Cache-Control", "no-cache, no-store, max-age=0")
@@ -142,6 +126,23 @@ class SphinxViewRequestHandler(SimpleHTTPRequestHandler):
                 return
             else:
                 sleep(0.2)
+
+    def get_polled_source_file(self, query):
+        # query['build_file'] returns a list, so take the first element
+        relative_build_file = query['build_file'][0]
+        # remove html extension and add rst extension
+        relative_source_file = path.splitext(relative_build_file)[0] + \
+            self.builder.suffix
+        # remove leading / from relative_source_file to treat it as relative
+        polled_source_file = path.join(
+            self.builder.source_dir, relative_source_file[1:])
+        return polled_source_file
+
+    @staticmethod
+    def get_build_time(query):
+        last_updated = query['last_updated'][0]
+        build_time = int(search(r'% (\d+) %', last_updated).group(1))
+        return build_time
 
 
 def launch_browser(url):
@@ -158,7 +159,7 @@ def print_args(arguments):
 
 
 def main():
-    # parse arguments
+    # parse and interpret arguments
     arguments = docopt(__doc__)
     #print_args(arguments)
     clean = arguments['--clean']
@@ -173,22 +174,22 @@ def main():
     output_dir = path.join(build_dir, SPHINXVIEW_OUTPUT_DIR)
     target = arguments['--target'] + '.html'
     suffix = arguments['--suffix']
+
+    builder = Builder(source_dir, output_dir, suffix)
+    builder.prepare_output_directory(clean)
+
     interface = arguments['--interface']
     port = int(arguments['--port'])
     browser = not arguments['--no-browser']
 
     url_target = 'http://{0}:{1}/{2}'.format(interface, port, target)
 
-    if clean:
-        rmtree(output_dir)
-
     # set up server and launch browser
     server_address = (interface, port)
-    handler_class = SphinxViewRequestHandler
-    httpd = SphinxViewHTTPServer(
-        server_address, handler_class, source_dir, output_dir, suffix)
+    httpd = BuildHTTPServer(server_address, builder)
     if browser:
         launch_browser(url_target)
+    chdir(output_dir)
     httpd.serve_forever()
 
 
