@@ -23,7 +23,7 @@ function send_request(){
     }
     var elements = document.getElementsByClassName("footer");
     var last_updated = elements[0].innerHTML;
-    xmlHttp.open('HEAD', '/polling?file_path=' + location.pathname + '&last_updated=' + last_updated, true);
+    xmlHttp.open('HEAD', '/polling?build_file=' + location.pathname + '&last_updated=' + last_updated, true);
     xmlHttp.send(null);
     }, 0);
   }
