@@ -26,13 +26,12 @@ Options:
 # TODO: Tests! But how?
 
 from docopt import docopt
-from os import chdir, path
+from os import path, mkdir, chdir, stat
 from time import sleep
 from urllib.parse import parse_qs
-from http.server import HTTPServer, SimpleHTTPRequestHandler
-from os import stat
-from subprocess import call
 from re import search
+from http.server import HTTPServer, SimpleHTTPRequestHandler
+from subprocess import call
 from shutil import rmtree
 from socketserver import ThreadingMixIn
 from threading import Thread
@@ -49,25 +48,38 @@ def setup(app):
     app.add_config_value('sphinxview_enabled', False, False)
     app.connect('builder-inited', builder_inited)
 
-SPHINXVIEW_OUTPUT_DIR = 'sphinxview'
-LAST_UPDATED_FMT = 'html_last_updated_fmt=%% %s %%'
-SPHINXVIEW_ENABLED_TRUE = 'sphinxview_enabled=1'
 
-
+# CLI program to build and serve the project
 class Builder(object):
-    def __init__(self, source_dir, output_dir, suffix):
-        self.source_dir = source_dir
-        self.output_dir = output_dir
-        self.suffix = suffix
+    sphinxview_output_dir = 'sphinxview'
+    last_updated_fmt = 'html_last_updated_fmt=%% %s %%'
+    sphinxview_enabled_true = 'sphinxview_enabled=1'
 
-        # validate source_dir
+    def __init__(self, source_dir, build_dir, suffix):
+        self.source_dir = path.abspath(source_dir)
+        self.build_dir = build_dir
+        self.suffix = suffix
+        self.output_dir = self.get_output_dir()
+
+    def validate_dirs(self):
+        if not path.isdir(self.source_dir):
+            exit('Error: Source directory does not exist!')
+        if not path.isdir(self.build_dir):
+            exit('Error: Build directory does not exist!')
+
+    def get_output_dir(self):
+        if not path.isabs(self.build_dir):
+            self.build_dir = path.join(self.source_dir, self.build_dir)
+        output_dir = path.join(self.build_dir, Builder.sphinxview_enabled_true)
+        return output_dir
 
     def prepare_output_directory(self, clean):
-        # handle output dir not exists
         if clean:
-            rmtree(self.output_dir)
+            rmtree(self.build_dir)
+        if not path.isdir(self.output_dir):
+            mkdir(self.output_dir)
 
-    def build_sphinx_project(self):
+    def build(self):
         sphinx_call = ['sphinx-build']
         # set html builder
         sphinx_call.append('-b')
@@ -76,10 +88,10 @@ class Builder(object):
         sphinx_call.append('-a')
         # set last updated format
         sphinx_call.append('-D')
-        sphinx_call.append(LAST_UPDATED_FMT)
+        sphinx_call.append(Builder.last_updated_fmt)
         # enable sphinxview extension
         sphinx_call.append('-D')
-        sphinx_call.append(SPHINXVIEW_ENABLED_TRUE)
+        sphinx_call.append(Builder.sphinxview_enabled_true)
         # set source and output directories
         sphinx_call.append(self.source_dir)
         sphinx_call.append(self.output_dir)
@@ -93,11 +105,11 @@ class BuildHTTPServer(ThreadingMixIn, HTTPServer):
 
     def __init__(self, server_address, builder):
         self.builder = builder
-        builder.build_sphinx_project()
         handler_class = BuildRequestHandler
         super().__init__(server_address, handler_class)
 
     def serve_forever(self, poll_interval=0.5):
+        chdir(self.builder.output_dir)
         print("===")
         print("Now serving on {0}".format(self.server_address))
         print("===")
@@ -131,7 +143,7 @@ class BuildRequestHandler(SimpleHTTPRequestHandler):
                 continue
 
             if mtime > build_time:  # the file was modified after the build
-                self.builder.build_sphinx_project()
+                self.builder.build()
                 self.send_response(200)
                 self.send_header(
                     "Cache-Control", "no-cache, no-store, max-age=0")
@@ -164,39 +176,31 @@ def launch_browser(url):
     browser_thread.start()
 
 
-def get_output_dir(source_dir, build_dir):
-    if not path.isabs(build_dir):
-        build_dir = path.join(source_dir, build_dir)
-    output_dir = path.join(build_dir, SPHINXVIEW_OUTPUT_DIR)
-    return output_dir
-
-
 def main():
     arguments = docopt(__doc__)
-    # set up builder and prepare output directory
+    # set up builder and do first build
     source_dir = arguments['<sourcedir>']
-    source_dir = path.abspath(source_dir)
     build_dir = arguments['--builddir']
-    output_dir = get_output_dir(source_dir, build_dir)
     suffix = arguments['--suffix']
     clean = arguments['--clean']
 
-    builder = Builder(source_dir, output_dir, suffix)
+    builder = Builder(source_dir, build_dir, suffix)
+    builder.validate_dirs()
     builder.prepare_output_directory(clean)
+    builder.build()
 
     # set up server and launch browser
     interface = arguments['--interface']
     port = int(arguments['--port'])
     server_address = (interface, port)
-    browser = not arguments['--no-browser']
+    httpd = BuildHTTPServer(server_address, builder)
 
+    browser = not arguments['--no-browser']
     if browser:
         target = arguments['--target']
         url_target = 'http://{0}:{1}/{2}.html'.format(interface, port, target)
         launch_browser(url_target)
 
-    httpd = BuildHTTPServer(server_address, builder)
-    chdir(output_dir)
     httpd.serve_forever()
 
 
