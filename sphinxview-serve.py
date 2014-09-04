@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 
 """
-sphinxview-serve - serves your Sphinx project and reloads page on changes to source files
+sphinxview - serves your Sphinx project and reloads pages on source changes
 
 Usage:
     sphinxview.py [options] <sourcedir>
@@ -37,6 +37,17 @@ from shutil import rmtree
 from socketserver import ThreadingMixIn
 from threading import Thread
 import webbrowser
+
+
+# Hook into Sphinx extension API
+def builder_inited(app):
+    if app.config.sphinxview_enabled:
+        app.add_javascript('sphinxview.js')
+
+
+def setup(app):
+    app.add_config_value('sphinxview_enabled', False, False)
+    app.connect('builder-inited', builder_inited)
 
 SPHINXVIEW_OUTPUT_DIR = 'sphinxview'
 LAST_UPDATED_FMT = 'html_last_updated_fmt=%% %s %%'
