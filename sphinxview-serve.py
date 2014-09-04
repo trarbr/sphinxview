@@ -1,20 +1,20 @@
 #! /usr/bin/env python3
 
 """
-sphinxview-serve - automatically rebuilds your Sphinx project on changes
+sphinxview-serve - serves your Sphinx project and reloads page on changes to source files
 
 Usage:
-    sphinxview.py [options]
+    sphinxview.py [options] <sourcedir>
     sphinxview.py -h | -- help
+
+<sourcedir> must be a path to a valid Sphinx source directory.
 
 Options:
     -c, --clean               If set, a clean build is created
-    -s, --sourcedir=<path>    Directory containing the Sphinx source files
-                              [default: .]
     -b, --builddir=<path>     Sphinx build directory. If passed a relative
                               path, it will be interpreted as relative to
                               sourcedir [default: _build]
-    --suffix=<suffix>         Source file suffix [default: .rst]
+    -s, --suffix=<suffix>     Source file suffix [default: .rst]
     -t, --target=<file>       Name of file to launch in web browser (without
                               extension) [default: index]
     -i, --interface=<ip>      Interface to serve build on [default: 127.0.0.1]
@@ -48,6 +48,8 @@ class Builder(object):
         self.source_dir = source_dir
         self.output_dir = output_dir
         self.suffix = suffix
+
+        # validate source_dir
 
     def prepare_output_directory(self, clean):
         # handle output dir not exists
@@ -151,44 +153,38 @@ def launch_browser(url):
     browser_thread.start()
 
 
-# for debugging
-def print_args(arguments):
-    for key, value in arguments.items():
-        print(key, value)
-    exit()
-
-
-def main():
-    # parse and interpret arguments
-    arguments = docopt(__doc__)
-    #print_args(arguments)
-    clean = arguments['--clean']
-    source_dir = arguments['--sourcedir']
-    if source_dir is not None:
-        source_dir = path.abspath(source_dir)
-    else:
-        source_dir = getcwd()
-    build_dir = arguments['--builddir']
+def get_output_dir(source_dir, build_dir):
     if not path.isabs(build_dir):
         build_dir = path.join(source_dir, build_dir)
     output_dir = path.join(build_dir, SPHINXVIEW_OUTPUT_DIR)
-    target = arguments['--target']
+    return output_dir
+
+
+def main():
+    arguments = docopt(__doc__)
+    # set up builder and prepare output directory
+    source_dir = arguments['<sourcedir>']
+    source_dir = path.abspath(source_dir)
+    build_dir = arguments['--builddir']
+    output_dir = get_output_dir(source_dir, build_dir)
     suffix = arguments['--suffix']
+    clean = arguments['--clean']
 
     builder = Builder(source_dir, output_dir, suffix)
     builder.prepare_output_directory(clean)
 
+    # set up server and launch browser
     interface = arguments['--interface']
     port = int(arguments['--port'])
+    server_address = (interface, port)
     browser = not arguments['--no-browser']
 
-    url_target = 'http://{0}:{1}/{2}.html'.format(interface, port, target)
-
-    # set up server and launch browser
-    server_address = (interface, port)
-    httpd = BuildHTTPServer(server_address, builder)
     if browser:
+        target = arguments['--target']
+        url_target = 'http://{0}:{1}/{2}.html'.format(interface, port, target)
         launch_browser(url_target)
+
+    httpd = BuildHTTPServer(server_address, builder)
     chdir(output_dir)
     httpd.serve_forever()
 
