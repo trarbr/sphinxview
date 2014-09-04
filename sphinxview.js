@@ -2,12 +2,6 @@ $(document).ready(function(){
   send_request();
 });
 
-function send_last_updated(){
-  // recursion
-  send_request();
-  setInterval(send_last_updated, 2000);
-}
-
 function send_request(){
   var xmlHttp = null;
   setTimeout(function () {
