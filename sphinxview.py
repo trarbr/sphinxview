@@ -24,6 +24,7 @@ Options:
 
 # TODO: List requirements
 # TODO: Tests! But how?
+# TODO: Python 2.7 anyone?
 
 from docopt import docopt
 from os import path, mkdir, chdir, stat
