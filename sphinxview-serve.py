@@ -103,7 +103,7 @@ class BuildRequestHandler(SimpleHTTPRequestHandler):
 
     def handle_polling(self):
         query = parse_qs(self.path.partition('?')[-1])
-        source_file = self.get_polled_source_file(query)
+        source_file = self.get_source_file(query)
         build_time = self.get_build_time(query)
 
         # while server.current_requested_url == my path
@@ -127,7 +127,7 @@ class BuildRequestHandler(SimpleHTTPRequestHandler):
             else:
                 sleep(0.2)
 
-    def get_polled_source_file(self, query):
+    def get_source_file(self, query):
         # query['build_file'] returns a list, so take the first element
         relative_build_file = query['build_file'][0]
         # remove html extension and add rst extension
@@ -172,7 +172,7 @@ def main():
     if not path.isabs(build_dir):
         build_dir = path.join(source_dir, build_dir)
     output_dir = path.join(build_dir, SPHINXVIEW_OUTPUT_DIR)
-    target = arguments['--target'] + '.html'
+    target = arguments['--target']
     suffix = arguments['--suffix']
 
     builder = Builder(source_dir, output_dir, suffix)
@@ -182,7 +182,7 @@ def main():
     port = int(arguments['--port'])
     browser = not arguments['--no-browser']
 
-    url_target = 'http://{0}:{1}/{2}'.format(interface, port, target)
+    url_target = 'http://{0}:{1}/{2}.html'.format(interface, port, target)
 
     # set up server and launch browser
     server_address = (interface, port)
