@@ -26,7 +26,7 @@ Options:
 # TODO: Tests! But how?
 
 from docopt import docopt
-from os import chdir, path, getcwd
+from os import chdir, path
 from time import sleep
 from urllib.parse import parse_qs
 from http.server import HTTPServer, SimpleHTTPRequestHandler
