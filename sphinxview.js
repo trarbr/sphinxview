@@ -1,9 +1,5 @@
-$(document).ready(function(){
-  send_request();
-});
-
-function send_request(){
-  var xmlHttp = null;
+var xmlHttp = null;
+window.onload = function () {
   setTimeout(function () {
     if (window.XMLHttpRequest) {
       xmlHttp = new XMLHttpRequest();
@@ -15,9 +11,14 @@ function send_request(){
         window.location.reload(true);
       }
     }
-    var elements = document.getElementsByClassName("footer");
+    var footer = document.getElementsByClassName("footer");
     var last_updated = elements[0].innerHTML;
+    xmlHttp.open('HEAD', '/polling?pathname=' + location.pathname + '&mtime=%d', true);
     xmlHttp.open('HEAD', '/polling?build_file=' + location.pathname + '&last_updated=' + last_updated, true);
     xmlHttp.send(null);
-    }, 0);
-  }
+  }, 0);
+}
+
+window.onbeforeunload = function () {
+   xmlHttp.abort();
+}
