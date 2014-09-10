@@ -1,5 +1,9 @@
-var xmlHttp = null;
-window.onload = function () {
+$(document).ready(function(){
+  send_request();
+});
+
+function send_request(){
+  var xmlHttp = null;
   setTimeout(function () {
     if (window.XMLHttpRequest) {
       xmlHttp = new XMLHttpRequest();
@@ -11,14 +15,9 @@ window.onload = function () {
         window.location.reload(true);
       }
     }
-    var footer = document.getElementsByClassName("footer");
+    var elements = document.getElementsByClassName("footer");
     var last_updated = elements[0].innerHTML;
-    xmlHttp.open('HEAD', '/polling?pathname=' + location.pathname + '&mtime=%d', true);
     xmlHttp.open('HEAD', '/polling?build_file=' + location.pathname + '&last_updated=' + last_updated, true);
     xmlHttp.send(null);
   }, 0);
-}
-
-window.onbeforeunload = function () {
-   xmlHttp.abort();
 }

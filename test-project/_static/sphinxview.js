@@ -19,5 +19,5 @@ function send_request(){
     var last_updated = elements[0].innerHTML;
     xmlHttp.open('HEAD', '/polling?build_file=' + location.pathname + '&last_updated=' + last_updated, true);
     xmlHttp.send(null);
-    }, 0);
-  }
+  }, 0);
+}
