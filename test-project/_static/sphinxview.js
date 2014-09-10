@@ -2,12 +2,6 @@ $(document).ready(function(){
   send_request();
 });
 
-function send_last_updated(){
-  // recursion
-  send_request();
-  setInterval(send_last_updated, 2000);
-}
-
 function send_request(){
   var xmlHttp = null;
   setTimeout(function () {
@@ -23,7 +17,7 @@ function send_request(){
     }
     var elements = document.getElementsByClassName("footer");
     var last_updated = elements[0].innerHTML;
-    xmlHttp.open('HEAD', '/polling?file_path=' + location.pathname + '&last_updated=' + last_updated, true);
+    xmlHttp.open('HEAD', '/polling?build_file=' + location.pathname + '&last_updated=' + last_updated, true);
     xmlHttp.send(null);
-    }, 0);
-  }
+  }, 0);
+}
