@@ -1,8 +1,4 @@
-$(document).ready(function(){
-  send_request();
-});
-
-function send_request(){
+$(document).ready(function () {
   var xmlHttp = null;
   setTimeout(function () {
     if (window.XMLHttpRequest) {
@@ -20,4 +16,4 @@ function send_request(){
     xmlHttp.open('HEAD', '/polling?build_file=' + location.pathname + '&last_updated=' + last_updated, true);
     xmlHttp.send(null);
   }, 0);
-}
+});
