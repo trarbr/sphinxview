@@ -38,7 +38,7 @@ from socketserver import ThreadingMixIn
 from threading import Thread
 import webbrowser
 
-__version__ = '0.1.0-alpha'
+__version__ = '0.1.0a1'
 
 # Hook into Sphinx extension API
 def builder_inited(app):
