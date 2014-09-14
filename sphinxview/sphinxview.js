@@ -1,3 +1,6 @@
+// Copyright 2014 Troels Brødsgaard
+// License: 2-clause BSD, see LICENSE for details
+
 $(document).ready(function () {
   var xmlHttp = null;
   setTimeout(function () {
