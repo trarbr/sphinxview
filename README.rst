@@ -15,7 +15,7 @@ Getting it
 
 You can install sphinxview from PyPI using pip:
 
-   $ pip install sphinxview
+   $ pip install --pre sphinxview
 
 Or you can get the source from the `GitHub repository
 <https://github.com/trarbr/sphinxview>`_.
