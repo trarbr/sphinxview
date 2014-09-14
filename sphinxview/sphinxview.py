@@ -1,11 +1,14 @@
 #! /usr/bin/env python3
 
+# Copyright 2014 Troels Brødsgaard
+# License: 2-clause BSD, see LICENSE for details
+
 """
 sphinxview - serves your Sphinx project and reloads pages on source changes
 
 Usage:
-    sphinxview.py [options] <sourcedir>
-    sphinxview.py -h | -- help
+    sphinxview [options] <sourcedir>
+    sphinxview -h | -- help
 
 <sourcedir> must be a path to a valid Sphinx source directory.
 
@@ -36,22 +39,12 @@ from subprocess import call
 from shutil import rmtree
 from socketserver import ThreadingMixIn
 from threading import Thread
+from shutil import copyfile
 import webbrowser
 
-__version__ = '0.1.0'
-
-# Hook into Sphinx extension API
-def builder_inited(app):
-    if app.config.sphinxview_enabled:
-        app.add_javascript('sphinxview.js')
+__version__ = '0.1.0b1'
 
 
-def setup(app):
-    app.add_config_value('sphinxview_enabled', False, False)
-    app.connect('builder-inited', builder_inited)
-
-
-# CLI program to build and serve the project
 class Builder(object):
     sphinxview_output_dir = 'sphinxview'
     last_updated_fmt = 'html_last_updated_fmt=%% %s %%'
@@ -63,21 +56,22 @@ class Builder(object):
         self.suffix = suffix
         self.output_dir = self.get_output_dir()
 
+    def get_output_dir(self):
+        if not path.isabs(self.build_dir):
+            self.build_dir = path.join(self.source_dir, self.build_dir)
+        output_dir = path.join(self.build_dir, Builder.sphinxview_output_dir)
+        return output_dir
+
     def validate_dirs(self):
         if not path.isdir(self.source_dir):
             exit('Error: Source directory does not exist!')
         if not path.isdir(self.build_dir):
             exit('Error: Build directory does not exist!')
 
-    def get_output_dir(self):
-        if not path.isabs(self.build_dir):
-            self.build_dir = path.join(self.source_dir, self.build_dir)
-        output_dir = path.join(self.build_dir, Builder.sphinxview_enabled_true)
-        return output_dir
-
     def prepare_output_directory(self, clean):
         if clean:
             rmtree(self.build_dir)
+            mkdir(self.build_dir)
         if not path.isdir(self.output_dir):
             mkdir(self.output_dir)
 
@@ -99,6 +93,16 @@ class Builder(object):
         sphinx_call.append(self.output_dir)
 
         call(sphinx_call)
+        self.copy_javascript()
+
+    def copy_javascript(self):
+        here = path.abspath(path.dirname(__file__))
+        js_source = path.join(here, 'sphinxview.js')
+        static_dir = path.join(self.output_dir, '_static/')
+        js_target = path.join(static_dir, 'sphinxview.js')
+        if not path.isfile(js_target):
+            copyfile(js_source, js_target)
+            print('Copied sphinxview.js to', js_target)
 
 
 class BuildHTTPServer(ThreadingMixIn, HTTPServer):
@@ -180,6 +184,7 @@ def launch_browser(url):
 
 def main():
     arguments = docopt(__doc__)
+
     # set up builder and do first build
     source_dir = arguments['<sourcedir>']
     build_dir = arguments['--builddir']

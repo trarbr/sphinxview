@@ -1,8 +1,7 @@
-$(document).ready(function(){
-  send_request();
-});
+// Copyright 2014 Troels Brødsgaard
+// License: 2-clause BSD, see LICENSE for details
 
-function send_request(){
+$(document).ready(function () {
   var xmlHttp = null;
   setTimeout(function () {
     if (window.XMLHttpRequest) {
@@ -20,4 +19,4 @@ function send_request(){
     xmlHttp.open('HEAD', '/polling?build_file=' + location.pathname + '&last_updated=' + last_updated, true);
     xmlHttp.send(null);
   }, 0);
-}
+});
