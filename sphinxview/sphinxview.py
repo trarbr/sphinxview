@@ -32,6 +32,7 @@ Options:
 from docopt import docopt
 from os import path, mkdir, chdir, stat
 from time import sleep
+from datetime import datetime
 from urllib.parse import parse_qs
 from re import search
 from http.server import HTTPServer, SimpleHTTPRequestHandler
@@ -47,7 +48,7 @@ __version__ = '0.1.0b1'
 
 class Builder(object):
     sphinxview_output_dir = 'sphinxview'
-    last_updated_fmt = 'html_last_updated_fmt=%% %s %%'
+    last_updated_fmt = 'html_last_updated_fmt=%% %Y%m%d%H%M%S %%'
     sphinxview_enabled_true = 'sphinxview_enabled=1'
 
     def __init__(self, source_dir, build_dir, suffix):
@@ -123,7 +124,6 @@ class BuildHTTPServer(ThreadingMixIn, HTTPServer):
 
 
 class BuildRequestHandler(SimpleHTTPRequestHandler):
-
     def __init__(self, request, client_address, server):
         self.builder = server.builder
         super().__init__(request, client_address, server)
@@ -140,7 +140,8 @@ class BuildRequestHandler(SimpleHTTPRequestHandler):
         # while server.current_requested_url == my path
         while True:
             try:
-                mtime = int(stat(source_file).st_mtime)
+                mtime = stat(source_file).st_mtime
+                mtime = datetime.fromtimestamp(mtime)
             except OSError:
                 # Sometimes when you save a file in a text editor it stops
                 # existing for a brief moment.
@@ -172,7 +173,8 @@ class BuildRequestHandler(SimpleHTTPRequestHandler):
     @staticmethod
     def get_build_time(query):
         last_updated = query['last_updated'][0]
-        build_time = int(search(r'% (\d+) %', last_updated).group(1))
+        build_time = search(r'% (\d+) %', last_updated).group(1)
+        build_time = datetime.strptime(build_time, '%Y%m%d%H%M%S')
         return build_time
 
 
