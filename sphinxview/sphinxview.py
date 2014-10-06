@@ -48,7 +48,6 @@ __version__ = '0.1.0'
 
 class Builder(object):
     sphinxview_output_dir = 'sphinxview'
-    last_updated_fmt = 'html_last_updated_fmt=%% %Y%m%d%H%M%S %%'
     sphinxview_enabled_true = 'sphinxview_enabled=1'
 
     def __init__(self, source_dir, build_dir, suffix):
@@ -84,9 +83,6 @@ class Builder(object):
         sphinx_call.append('html')
         # force building all files
         sphinx_call.append('-a')
-        # set last updated format
-        sphinx_call.append('-D')
-        sphinx_call.append(Builder.last_updated_fmt)
         # enable sphinxview extension
         sphinx_call.append('-D')
         sphinx_call.append(Builder.sphinxview_enabled_true)
@@ -104,7 +100,6 @@ class Builder(object):
         js_target = path.join(static_dir, 'sphinxview.js')
         if not path.isfile(js_target):
             copyfile(js_source, js_target)
-            print('Copied sphinxview.js to', js_target)
 
 
 class BuildHTTPServer(ThreadingMixIn, HTTPServer):

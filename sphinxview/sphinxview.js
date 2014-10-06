@@ -14,9 +14,7 @@ $(document).ready(function () {
         window.location.reload(true);
       }
     }
-    var elements = document.getElementsByClassName("footer");
-    var last_updated = elements[0].innerHTML;
-    xmlHttp.open('HEAD', '/polling?build_file=' + location.pathname + '&last_updated=' + last_updated, true);
+    xmlHttp.open('HEAD', '/polling?build_file=' + location.pathname, true);
     xmlHttp.send(null);
   }, 0);
 });
