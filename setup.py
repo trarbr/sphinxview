@@ -9,7 +9,7 @@ with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
 
 setup(
     name='sphinxview',
-    version='0.1.0b1',
+    version='0.1.0',
     packages=find_packages(exclude=['tests']),
 
     description='Serves your Sphinx project and reloads pages on source changes',
