@@ -43,7 +43,7 @@ from threading import Thread
 from shutil import copyfile
 import webbrowser
 
-__version__ = '0.1.0b1'
+__version__ = '0.1.0'
 
 
 class Builder(object):
