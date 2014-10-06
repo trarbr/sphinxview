@@ -77,6 +77,7 @@ class Builder(object):
             mkdir(self.output_dir)
 
     def build(self):
+        self.build_time = datetime.now()
         sphinx_call = ['sphinx-build']
         # set html builder
         sphinx_call.append('-b')
@@ -135,7 +136,7 @@ class BuildRequestHandler(SimpleHTTPRequestHandler):
     def handle_polling(self):
         query = parse_qs(self.path.partition('?')[-1])
         source_file = self.get_source_file(query)
-        build_time = self.get_build_time(query)
+        build_time = self.builder.build_time
 
         # while server.current_requested_url == my path
         while True:
@@ -169,13 +170,6 @@ class BuildRequestHandler(SimpleHTTPRequestHandler):
         polled_source_file = path.join(
             self.builder.source_dir, relative_source_file[1:])
         return polled_source_file
-
-    @staticmethod
-    def get_build_time(query):
-        last_updated = query['last_updated'][0]
-        build_time = search(r'% (\d+) %', last_updated).group(1)
-        build_time = datetime.strptime(build_time, '%Y%m%d%H%M%S')
-        return build_time
 
 
 def launch_browser(url):
