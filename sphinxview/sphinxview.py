@@ -1,4 +1,5 @@
 #! /usr/bin/env python3
+# -*- coding: utf-8 -*-
 
 # Copyright 2014 Troels Brødsgaard
 # License: 2-clause BSD, see LICENSE for details
@@ -29,16 +30,30 @@ Options:
 # TODO: Tests! But how?
 # TODO: Python 2.7 anyone?
 
+import sys
+
+PY2 = sys.version_info[0] == 2
+
 from docopt import docopt
 from os import path, mkdir, chdir, stat
 from time import sleep
 from datetime import datetime
-from urllib.parse import parse_qs
+if PY2:
+    from urlparse import parse_qs
+else:
+    from urllib.parse import parse_qs
 from re import search
-from http.server import HTTPServer, SimpleHTTPRequestHandler
+if PY2:
+    from BaseHTTPServer import HTTPServer
+    from SimpleHTTPServer import SimpleHTTPRequestHandler
+else:
+    from http.server import HTTPServer, SimpleHTTPRequestHandler
 from subprocess import call
 from shutil import rmtree
-from socketserver import ThreadingMixIn
+if PY2:
+    from SocketServer import ThreadingMixIn
+else:
+    from socketserver import ThreadingMixIn
 from threading import Thread
 from shutil import copyfile
 import webbrowser
@@ -109,20 +124,30 @@ class BuildHTTPServer(ThreadingMixIn, HTTPServer):
     def __init__(self, server_address, builder):
         self.builder = builder
         handler_class = BuildRequestHandler
-        super().__init__(server_address, handler_class)
+        if PY2:
+            HTTPServer.__init__(self, server_address, handler_class)
+        else:
+            super().__init__(server_address, handler_class)
 
     def serve_forever(self, poll_interval=0.5):
         chdir(self.builder.output_dir)
         print("===")
         print("Now serving on {0}".format(self.server_address))
         print("===")
-        super().serve_forever(poll_interval)
+        if PY2:
+            HTTPServer.serve_forever(self, poll_interval)
+        else:
+            super().serve_forever(poll_interval)
 
 
 class BuildRequestHandler(SimpleHTTPRequestHandler):
     def __init__(self, request, client_address, server):
         self.builder = server.builder
-        super().__init__(request, client_address, server)
+        if PY2:
+            SimpleHTTPRequestHandler.__init__(self, request, client_address,
+                                              server)
+        else:
+            super().__init__(request, client_address, server)
 
     def do_HEAD(self):
         if self.path.startswith('/polling?'):
