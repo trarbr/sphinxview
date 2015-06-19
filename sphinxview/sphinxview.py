@@ -196,11 +196,7 @@ def launch_browser(url):
 
 
 def main():
-    arguments = docopt(__doc__)
-
-    if arguments['--version']:
-        print('sphinxview ' + __version__)
-        exit()
+    arguments = docopt(__doc__, version=__version__)
 
     # set up builder and do first build
     source_dir = arguments['<sourcedir>']
