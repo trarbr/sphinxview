@@ -9,7 +9,8 @@ sphinxview - serves your Sphinx project and reloads pages on source changes
 
 Usage:
     sphinxview [options] <sourcedir>
-    sphinxview -h | -- help
+    sphinxview -h | --help
+    sphinxview -v | --version
 
 <sourcedir> must be a path to a valid Sphinx source directory.
 
@@ -24,6 +25,8 @@ Options:
     -i, --interface=<ip>      Interface to serve build on [default: 127.0.0.1]
     -p, --port=<port>         Port to serve build on [default: 16001]
     -n, --no-browser          Don't open a web browser pointed at target
+    -h, --help                Show help
+    -v, --version             Show version
 """
 
 # TODO: List requirements
@@ -194,6 +197,10 @@ def launch_browser(url):
 
 def main():
     arguments = docopt(__doc__)
+
+    if arguments['--version']:
+        print('sphinxview ' + __version__)
+        exit()
 
     # set up builder and do first build
     source_dir = arguments['<sourcedir>']
