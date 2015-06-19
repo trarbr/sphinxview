@@ -28,7 +28,6 @@ Options:
 
 # TODO: List requirements
 # TODO: Tests! But how?
-# TODO: Python 2.7 anyone?
 
 import sys
 
@@ -38,32 +37,26 @@ from docopt import docopt
 from os import path, mkdir, chdir, stat
 from time import sleep
 from datetime import datetime
+from threading import Thread
+from shutil import copyfile, rmtree
+from subprocess import call
+import webbrowser
+
 if PY2:
     from urlparse import parse_qs
-else:
-    from urllib.parse import parse_qs
-from re import search
-if PY2:
     from BaseHTTPServer import HTTPServer
     from SimpleHTTPServer import SimpleHTTPRequestHandler
-else:
-    from http.server import HTTPServer, SimpleHTTPRequestHandler
-from subprocess import call
-from shutil import rmtree
-if PY2:
     from SocketServer import ThreadingMixIn
 else:
+    from urllib.parse import parse_qs
+    from http.server import HTTPServer, SimpleHTTPRequestHandler
     from socketserver import ThreadingMixIn
-from threading import Thread
-from shutil import copyfile
-import webbrowser
 
 __version__ = '0.1.0'
 
 
 class Builder(object):
     sphinxview_output_dir = 'sphinxview'
-    last_updated_fmt = 'html_last_updated_fmt=%% %Y%m%d%H%M%S %%'
     sphinxview_enabled_true = 'sphinxview_enabled=1'
 
     def __init__(self, source_dir, build_dir, suffix):
@@ -92,15 +85,13 @@ class Builder(object):
             mkdir(self.output_dir)
 
     def build(self):
+        self.build_time = datetime.now()
         sphinx_call = ['sphinx-build']
         # set html builder
         sphinx_call.append('-b')
         sphinx_call.append('html')
         # force building all files
         sphinx_call.append('-a')
-        # set last updated format
-        sphinx_call.append('-D')
-        sphinx_call.append(Builder.last_updated_fmt)
         # enable sphinxview extension
         sphinx_call.append('-D')
         sphinx_call.append(Builder.sphinxview_enabled_true)
@@ -118,7 +109,6 @@ class Builder(object):
         js_target = path.join(static_dir, 'sphinxview.js')
         if not path.isfile(js_target):
             copyfile(js_source, js_target)
-            print('Copied sphinxview.js to', js_target)
 
 
 class BuildHTTPServer(ThreadingMixIn, HTTPServer):
@@ -160,7 +150,7 @@ class BuildRequestHandler(SimpleHTTPRequestHandler):
     def handle_polling(self):
         query = parse_qs(self.path.partition('?')[-1])
         source_file = self.get_source_file(query)
-        build_time = self.get_build_time(query)
+        build_time = self.builder.build_time
 
         # while server.current_requested_url == my path
         while True:
@@ -194,13 +184,6 @@ class BuildRequestHandler(SimpleHTTPRequestHandler):
         polled_source_file = path.join(
             self.builder.source_dir, relative_source_file[1:])
         return polled_source_file
-
-    @staticmethod
-    def get_build_time(query):
-        last_updated = query['last_updated'][0]
-        build_time = search(r'% (\d+) %', last_updated).group(1)
-        build_time = datetime.strptime(build_time, '%Y%m%d%H%M%S')
-        return build_time
 
 
 def launch_browser(url):
