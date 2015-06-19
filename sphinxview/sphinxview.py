@@ -28,7 +28,6 @@ Options:
 
 # TODO: List requirements
 # TODO: Tests! But how?
-# TODO: Python 2.7 anyone?
 
 import sys
 
@@ -38,25 +37,20 @@ from docopt import docopt
 from os import path, mkdir, chdir, stat
 from time import sleep
 from datetime import datetime
+from threading import Thread
+from shutil import copyfile, rmtree
+from subprocess import call
+import webbrowser
+
 if PY2:
     from urlparse import parse_qs
-else:
-    from urllib.parse import parse_qs
-from re import search
-if PY2:
     from BaseHTTPServer import HTTPServer
     from SimpleHTTPServer import SimpleHTTPRequestHandler
-else:
-    from http.server import HTTPServer, SimpleHTTPRequestHandler
-from subprocess import call
-from shutil import rmtree
-if PY2:
     from SocketServer import ThreadingMixIn
 else:
+    from urllib.parse import parse_qs
+    from http.server import HTTPServer, SimpleHTTPRequestHandler
     from socketserver import ThreadingMixIn
-from threading import Thread
-from shutil import copyfile
-import webbrowser
 
 __version__ = '0.1.0'
 
